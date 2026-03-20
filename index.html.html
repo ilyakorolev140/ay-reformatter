@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AY · Meeting Reformatter</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #09100a;
+  --surface: #0e150f;
+  --surface2: #131c14;
+  --border: #1a231b;
+  --border-mid: #243026;
+  --accent: #9fd65c;
+  --accent-dim: #4e7a22;
+  --accent-hover: rgba(159,214,92,0.08);
+  --text: #cfdfc8;
+  --text-muted: #5e7357;
+  --text-dim: #2b3828;
+  --gold: #c4a84f;
+  --error: #e07055;
+  --blue: #5b9cf6;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12.5px;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle,var(--border) 1px,transparent 1px);
+  background-size:30px 30px;
+  pointer-events:none;z-index:0;
+}
+.shell{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* ── HEADER ── */
+header{
+  border-bottom:1px solid var(--border-mid);
+  padding:15px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(9,16,10,0.94);
+  backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:20;
+}
+.logo{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;letter-spacing:0.03em;color:var(--text);display:flex;align-items:center;gap:10px;}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+.logo em{font-style:italic;font-weight:400;color:var(--text-muted);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.badge{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);border:1px solid var(--border-mid);padding:3px 8px;border-radius:2px;}
+.zapier-badge{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);border:1px solid rgba(91,156,246,0.25);padding:3px 8px;border-radius:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:5px;}
+.zapier-badge:hover{background:rgba(91,156,246,0.07);border-color:rgba(91,156,246,0.45);}
+.zapier-badge .zap-dot{width:5px;height:5px;border-radius:50%;background:var(--blue);box-shadow:0 0 5px var(--blue);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);transition:background 0.3s,box-shadow 0.3s;}
+.status-dot.active{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+
+/* ── MAIN ── */
+main{flex:1;display:flex;flex-direction:column;max-width:1500px;width:100%;margin:0 auto;padding:26px 28px 40px;gap:16px;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);}
+.tab{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.2s,border-color 0.2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── DROP ZONES ── */
+.inputs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+.upload-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:4px;
+  display:flex;flex-direction:column;
+  min-height:200px;
+  overflow:hidden;
+}
+.upload-panel.loaded{
+  border-color:var(--accent-dim);
+}
+.dz-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px;width:100%;flex:1;}
+.dz-icon{font-size:32px;opacity:0.25;}
+.dz-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);}
+.dz-sub{font-size:9px;color:var(--text-dim);}
+.dz-types{font-size:8.5px;color:var(--text-dim);letter-spacing:0.08em;}
+.upload-btn{
+  background:var(--surface2);
+  border:1px solid var(--border-mid);
+  color:var(--text);
+  cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  padding:9px 20px;
+  border-radius:2px;
+  margin-top:4px;
+  transition:border-color 0.2s,background 0.2s,color 0.2s;
+}
+.upload-btn:hover{
+  border-color:var(--accent-dim);
+  background:var(--accent-hover);
+  color:var(--accent);
+}
+
+
+.dz-loaded{display:none;flex-direction:column;width:100%;flex:1;}
+.upload-panel.loaded .dz-loaded{display:flex;}
+.upload-panel.loaded .dz-idle{display:none;}
+
+.dz-file-header{
+  padding:9px 13px 8px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;
+  background:var(--surface2);
+}
+.dz-filename{font-size:9px;letter-spacing:0.14em;color:var(--accent);display:flex;align-items:center;gap:6px;}
+.dz-filename::before{content:'✓';font-size:9px;color:var(--accent);}
+.dz-clear{background:none;border:none;color:var(--text-dim);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:2px 6px;transition:color 0.2s;}
+.dz-clear:hover{color:var(--error);}
+.dz-preview{
+  padding:12px 14px;
+  font-size:10.5px;
+  color:var(--text-muted);
+  line-height:1.7;
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:170px;
+  overflow-y:auto;
+  width:100%;
+  flex:1;
+}
+
+/* hidden file inputs */
+input[type=file]{display:none;}
+
+/* ── CONTROLS ── */
+.controls{display:flex;align-items:center;justify-content:space-between;padding:0 2px;}
+.controls-left{display:flex;align-items:center;gap:14px;}
+.clear-btn{background:none;border:1px solid var(--border-mid);color:var(--text-muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;padding:8px 14px;border-radius:2px;transition:border-color 0.2s,color 0.2s;}
+.clear-btn:hover{border-color:var(--text-muted);color:var(--text);}
+.hint{font-size:9px;color:var(--text-dim);letter-spacing:0.06em;}
+
+.run-btn{background:var(--accent);color:#0a100b;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:11px 28px;border-radius:2px;transition:opacity 0.2s,transform 0.15s,box-shadow 0.2s;display:flex;align-items:center;gap:8px;}
+.run-btn:hover:not(:disabled){opacity:0.88;transform:translateY(-1px);box-shadow:0 4px 16px rgba(159,214,92,0.2);}
+.run-btn:disabled{opacity:0.35;cursor:not-allowed;transform:none;}
+.run-btn .spinner{width:11px;height:11px;border-radius:50%;border:2px solid rgba(10,16,11,0.3);border-top-color:#0a100b;animation:spin 0.6s linear infinite;display:none;}
+.run-btn.loading .spinner{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── OUTPUT ── */
+.output-section{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:3px;overflow:hidden;min-height:320px;}
+.output-top{padding:9px 13px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
+.output-label{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);display:flex;align-items:center;gap:7px;}
+.output-label::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);}
+.output-actions{display:flex;gap:8px;}
+.copy-btn{background:none;border:1px solid var(--border-mid);color:var(--text-muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:5px 11px;border-radius:2px;transition:all 0.2s;}
+.copy-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+.copy-btn.copied{border-color:var(--accent);color:var(--accent);}
+.dl-btn{background:var(--accent);color:#0a100b;border:1px solid var(--accent);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;padding:6px 14px;border-radius:2px;transition:all 0.2s;}
+.dl-btn:hover{opacity:0.85;box-shadow:0 2px 10px rgba(159,214,92,0.25);}
+
+.output-body{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:320px;}
+.pane-label{font-size:8.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);padding:6px 16px 5px;border-bottom:1px solid var(--border);background:var(--surface2);}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:260px;gap:10px;color:var(--text-dim);grid-column:1/-1;}
+.empty-icon{font-size:28px;opacity:0.3;}
+.empty-text{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;}
+
+.error-msg{color:var(--error);font-size:11px;padding:14px 16px;background:rgba(224,112,85,0.06);border:1px solid rgba(224,112,85,0.2);border-radius:2px;margin:16px;}
+
+/* MD preview */
+.md-render{font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.8;color:var(--text);}
+.md-render h1{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border-mid);}
+.md-render h3{font-size:9.5px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin:14px 0 6px;}
+.md-render h2{font-family:'Playfair Display',serif;font-size:13px;font-style:italic;color:var(--text);margin:14px 0 6px;}
+.md-render strong{color:var(--text);font-weight:500;}
+.md-render ul{padding-left:14px;margin:4px 0;}
+.md-render li{margin:3px 0;color:var(--text-muted);}
+.md-render li strong{color:var(--text);}
+.md-render p{margin:5px 0;color:var(--text-muted);}
+.md-render hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+/* ── ZAPIER PANEL ── */
+.zapier-panel{display:none;flex-direction:column;gap:14px;}
+.zapier-panel.visible{display:flex;}
+.zap-card{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;}
+.zap-title{font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text);margin-bottom:2px;}
+.zap-desc{font-size:11px;color:var(--text-muted);line-height:1.7;}
+.zap-url-row{display:flex;gap:8px;align-items:center;}
+.zap-url{flex:1;background:var(--surface2);border:1px solid var(--border-mid);border-radius:2px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:0.04em;user-select:all;cursor:text;}
+.zap-copy-btn{background:none;border:1px solid var(--border-mid);color:var(--text-muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:8px 12px;border-radius:2px;transition:all 0.2s;white-space:nowrap;}
+.zap-copy-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+.zap-steps{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.zap-step{display:flex;gap:10px;align-items:flex-start;}
+.zap-step-num{min-width:18px;height:18px;border-radius:50%;background:var(--surface2);border:1px solid var(--border-mid);font-size:9px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);margin-top:1px;}
+.zap-step-text{font-size:11px;color:var(--text-muted);line-height:1.6;}
+.zap-step-text strong{color:var(--text);}
+.zap-divider{height:1px;background:var(--border);margin:4px 0;}
+.incoming-queue{display:flex;flex-direction:column;gap:8px;}
+.queue-item{background:var(--surface2);border:1px solid var(--border-mid);border-radius:2px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+.queue-meta{display:flex;flex-direction:column;gap:3px;}
+.queue-name{font-size:10px;color:var(--text);}
+.queue-time{font-size:9px;color:var(--text-muted);}
+.queue-use-btn{background:var(--accent);color:#0a100b;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border-radius:2px;}
+.queue-empty{font-size:10px;color:var(--text-dim);text-align:center;padding:20px;letter-spacing:0.08em;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Avison Young <em>· Intelligence</em>
+  </div>
+  <div class="header-right">
+    <div class="badge">Meeting Reformatter</div>
+    <div class="zapier-badge" id="rosterToggleBtn" style="color:var(--accent);border-color:rgba(159,214,92,0.25);">
+      <div class="zap-dot" style="background:var(--accent);box-shadow:0 0 5px var(--accent);"></div>
+      AY Roster
+    </div>
+    <div class="zapier-badge" id="zapierToggleBtn">
+      <div class="zap-dot"></div>
+      Zapier / Outlook
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" id="tabManual" id="tabManual">Drop Files</div>
+    <div class="tab" id="tabZapier" id="tabZapier">Zapier Inbox</div>
+  </div>
+
+  <!-- ROSTER SETTINGS (hidden by default) -->
+  <div id="rosterPanel" style="display:none;background:var(--surface);border:1px solid var(--border-mid);border-radius:3px;padding:16px 18px;gap:12px;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);">AY Team Roster</div>
+      <button id="rosterCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;">✕ Close</button>
+    </div>
+    <div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;">One person per line. Format: <span style="color:var(--accent);">Full Name (alias1, alias2)</span> — aliases help catch Plaud mishearings.</div>
+    <textarea id="rosterInput" style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:2px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);line-height:1.7;resize:vertical;min-height:130px;outline:none;caret-color:var(--accent);" oninput="saveRoster()"></textarea>
+    <div style="font-size:9px;color:var(--text-dim);">Changes save automatically and apply to every future reformat.</div>
+  </div>
+
+  <!-- MANUAL DROP PANEL -->
+  <div id="panelManual">
+
+    <div class="inputs-row">
+
+      <!-- TRANSCRIPT UPLOAD -->
+      <div class="upload-panel" id="dzTranscript">
+        <input type="file" id="fileTranscript" accept=".txt,.md,.text"/>
+
+        <div class="dz-idle" id="dzTranscriptIdle">
+          <div class="dz-icon">📄</div>
+          <div class="dz-label">Raw Transcript</div>
+          <div class="dz-sub">Plaud raw transcript (.txt)</div>
+          <button class="upload-btn" id="uploadTranscriptBtn">Choose File</button>
+        </div>
+
+        <div class="dz-loaded" id="dzTranscriptLoaded">
+          <div class="dz-file-header">
+            <span class="dz-filename" id="transcriptFilename">transcript.txt</span>
+            <button class="dz-clear" id="clearTranscriptBtn">✕ Clear</button>
+          </div>
+          <div class="dz-preview" id="transcriptPreview"></div>
+        </div>
+      </div>
+
+      <!-- SUMMARY UPLOAD -->
+      <div class="upload-panel" id="dzSummary">
+        <input type="file" id="fileSummary" accept=".txt,.md,.text"/>
+
+        <div class="dz-idle" id="dzSummaryIdle">
+          <div class="dz-icon">📋</div>
+          <div class="dz-label">Plaud Summary</div>
+          <div class="dz-sub">Plaud generated summary (.txt)</div>
+          <button class="upload-btn" id="uploadSummaryBtn">Choose File</button>
+        </div>
+
+        <div class="dz-loaded" id="dzSummaryLoaded">
+          <div class="dz-file-header">
+            <span class="dz-filename" id="summaryFilename">summary.txt</span>
+            <button class="dz-clear" id="clearSummaryBtn">✕ Clear</button>
+          </div>
+          <div class="dz-preview" id="summaryPreview"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="controls">
+      <div class="controls-left">
+        <button class="clear-btn" id="clearAllBtn">Clear All</button>
+        <span class="hint" id="readyHint">drop both files to begin</span>
+      </div>
+      <button class="run-btn" id="runBtn" disabled>
+        <div class="spinner"></div>
+        <span class="btn-text">Reformat Meeting →</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ZAPIER PANEL -->
+  <div id="panelZapier" style="display:none;">
+    <div class="zapier-panel visible">
+
+      <div class="zap-card">
+        <div class="zap-title">Webhook URL — paste into Zapier</div>
+        <div class="zap-desc">In Zapier, create a Zap: <strong>Outlook → New Email Attachment</strong> → <strong>Webhooks by Zapier (POST)</strong>. Use the URL below as the destination. Send both attachments (transcript + summary) as fields named <code>transcript</code> and <code>summary</code>.</div>
+        <div class="zap-url-row">
+          <div class="zap-url" id="webhookUrl">https://ay-reformatter.vercel.app/api/webhook</div>
+          <button class="zap-copy-btn" id="webhookCopyBtn">Copy URL</button>
+        </div>
+        <div class="zap-divider"></div>
+        <div class="zap-title" style="margin-top:4px;">Zapier Setup — Step by Step</div>
+        <div class="zap-steps">
+          <div class="zap-step"><div class="zap-step-num">1</div><div class="zap-step-text"><strong>Trigger:</strong> Microsoft Outlook → New Email (filter by sender: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7618190413061a0f36061a17031258171f">[email&#160;protected]</a> or subject contains "Plaud")</div></div>
+          <div class="zap-step"><div class="zap-step-num">2</div><div class="zap-step-text"><strong>Action 1:</strong> Zapier Storage → Get Value — save the two attachments (transcript.txt and summary.txt) as separate fields</div></div>
+          <div class="zap-step"><div class="zap-step-num">3</div><div class="zap-step-text"><strong>Action 2:</strong> Webhooks by Zapier → POST — send to the URL above with body fields: <code>transcript</code> (raw transcript text) and <code>summary</code> (summary text) and <code>subject</code> (email subject as meeting name)</div></div>
+          <div class="zap-step"><div class="zap-step-num">4</div><div class="zap-step-text"><strong>Result:</strong> The meeting appears in the Zapier Inbox tab below — click Load to auto-populate both drop zones and reformat with one click</div></div>
+        </div>
+      </div>
+
+      <div class="zap-card">
+        <div class="zap-title">Zapier Inbox <span style="color:var(--text-muted);font-size:9px;letter-spacing:0.1em;margin-left:8px;">— meetings received automatically</span></div>
+        <div class="incoming-queue" id="incomingQueue">
+          <div class="queue-empty" id="queueEmpty">No meetings received yet. Configure Zapier above to start auto-ingesting from Outlook.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-section" id="outputSection">
+    <div class="output-top">
+      <span class="output-label">Reformatted Output</span>
+      <div class="output-actions">
+        <button class="copy-btn" id="copyBtn" id="copyBtn" style="display:none">Copy MD</button>
+        <button class="dl-btn" id="dlBtn" id="dlBtn" style="display:none">↓ Download .md</button>
+      </div>
+    </div>
+    <div class="output-body" id="outputBody">
+      <div class="empty-state">
+        <div class="empty-icon">◈</div>
+        <div class="empty-text">Output will appear here</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── AY ROSTER ──
+const DEFAULT_ROSTER = `Kim Troeller (Kim Troller, Kimberly, Kim)
+Erik Edeen (Eric, Erica, Erica Dean, Eric Dean, Erik, Edeen)
+James Nelson (James)
+Katie Kruger (Katie)
+Joe French (Joe)`;
+
+function loadRoster() {
+  return localStorage.getItem('ay_roster') || DEFAULT_ROSTER;
+}
+function saveRoster() {
+  localStorage.setItem('ay_roster', document.getElementById('rosterInput').value);
+}
+function initRoster() {
+  document.getElementById('rosterInput').value = loadRoster();
+}
+function toggleRoster() {
+  const p = document.getElementById('rosterPanel');
+  p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+}
+function buildSystemPrompt() {
+  const roster = loadRoster().trim().split('\n').filter(l => l.trim()).map(l => '   - ' + l.trim()).join('\n');
+  return `You are the official meeting notes formatter for Avison Young (AY), a commercial real estate brokerage firm. Your sole job is to convert a raw Plaud voice transcript and a Plaud-generated summary into a single polished .md file in AY's exact house format.
+
+You have been trained on three real examples from AY meetings. Study the following format precisely and replicate it exactly — section by section, field by field, tone and prose style included.
+
+═══════════════════════════════════════
+EXACT OUTPUT STRUCTURE (mandatory):
+═══════════════════════════════════════
+
+# [Company Name] - Meeting Summary
+
+### 1. Meeting Metadata
+- **Date:** MM/DD/YYYY
+- **Company Name:** [Full legal/common company name]
+- **Company Type:** [One of: Developer / Fund Manager | Owner-Operator / Developer | Real Estate Investment Manager / Developer | Institutional Investor | Family Office | etc — be precise and accurate]
+- **External Contacts (Investors):**
+  - [Full Name] — [Title if stated; if not stated write: Title Not Stated]
+  - [repeat for each external contact]
+- **Avison Young Team:** [First Last, First Last, First Last — comma separated, full names only]
+- **Subject / Primary Topic:** [One tight sentence: the meeting's core purpose and main topics]
+
+### 2. Investor Profile & Preferences
+- **Asset Class Focus:** [All asset classes they invest in, with specifics — e.g. strategies within each class]
+- **Geographic Focus:** [Every specific market, submarket, city they mentioned — organized and specific]
+- **Investment Strategy:** [Full description: deal types, structures, approaches, platforms, co-GP, development bars, etc.]
+- **Target Returns:** [Specific metrics if discussed — IRR, yield on cost, cash-on-cash, cap rate targets. If not discussed: "Not discussed"]
+- **Deal Size / Check Size:** [Unit counts, dollar ranges if mentioned. If not: "Not discussed"]
+- **Hold Period:** [If mentioned. If not: "Not discussed"]
+
+### 3. Key Takeaways & Nuances
+- **Current Sentiment:** [2–4 sentences — intelligent, nuanced read on their current posture, activity level, market outlook, and what they actually want. This should feel like a smart analyst's read, not a dry summary.]
+- **Capital Availability:** [What they have ready or described. If not discussed: "Not discussed"]
+- **Specific Needs from AY:** [Exactly what they want AY to send them — specific asset types, markets, size, situations. Be actionable and precise.]
+
+### 4. Detailed Meeting Notes
+[Write 3–6 paragraphs of flowing, intelligent prose. NO bullet points. NO sub-headers. Write like a senior analyst who was in the room. Include:
+- Who said what (use names, not Speaker numbers)
+- Every specific deal discussed with all details: address, price, cap rate, unit count, broker, vintage, status
+- Market stats and data points mentioned
+- Nuanced observations, hesitations, and qualifications the investor expressed
+- Context for why things were said
+- The AY team presentations and how the investor responded
+- Any tangential but relevant conversation
+Preserve all specifics. Do NOT sanitize. Dense and informative.]
+
+### 5. Next Steps / Action Items
+- [Responsible party (Name/Team)] to [specific action — with all relevant deal names, contacts, details]
+- [repeat for every concrete next step mentioned in the meeting]
+
+═══════════════════════════════════════
+CRITICAL STYLE RULES:
+═══════════════════════════════════════
+1. AY TEAM IDENTIFICATION:
+   FIXED REFERENCE (spelling + affiliation only — only include in a meeting if they actually appear in that transcript):
+__AY_ROSTER__
+   EVERYONE ELSE: Interpret fresh from the transcript and summary every single meeting with zero memory of past meetings. Determine AY vs external purely from context clues in this specific document:
+   - AY internal signals: introduces themselves as from Avison Young, is on the selling/presenting side of the meeting, is pitching deals to the investor, references AY's platform/team/offices
+   - External contact signals: represents another firm, is the investor or client being pitched to, discusses their own capital/criteria/portfolio
+   NEVER carry forward assumptions about any name from previous meetings. Every name outside the fixed 5 is evaluated from scratch every time. This prevents hallucination and name drift across hundreds of meetings. If any of them appear in the transcript or summary, they go under "Avison Young Team" — never under external contacts. Use canonical spelling; recognize Plaud alias variants in parentheses:
+${roster}
+   Only list AY members actually present in this meeting. Use canonical spellings only.
+
+2. EXTERNAL CONTACTS: Everyone NOT on the AY roster above is an external contact (investor/client). List under "External Contacts (Investors)" with name and title if stated. Never mix AY staff with external contacts.
+
+3. FIRM NAME: The brokerage firm is always "Avison Young" — never write any other variation. Plaud frequently mishears it as "Davidson Young", "Davis & Young", "ABC Young", "Avison" or any other garbled version. Always output "Avison Young" regardless of what appears in the transcript or summary.
+
+4. SPEAKER RESOLUTION: Use both transcript and summary together to identify who is who. The summary usually names speakers; the transcript has more detail. Important patterns from training:
+   - Plaud frequently mishears "Avison Young" as "ABC Young", "Davis & Young", "Davidson Young", or similar — always write "Avison Young"
+   - Speaker numbers in the transcript do not always match the order of names in the summary — cross-reference by content, not position
+   - If a speaker leaves early or only says a few words, still identify them correctly but do not fabricate their contributions
+
+5. SECTION 4 PROSE: Sophisticated, professional real estate language. Dense with deal-specific details.
+
+6. COMPLETENESS: Every specific number, deal name, address, company name, and metric must appear somewhere in the document.
+
+7. FORMAT: Output ONLY the raw markdown starting with # [Company Name]. No preamble. No explanation. No closing remarks.
+
+11. NO TABLES EVER: Never use markdown tables anywhere in the output. Not in Section 2, not in Section 3, not anywhere. Always use flat bullet points with bold labels instead — e.g. `- **Asset Class Focus:** ...`. Tables break downstream parsing across hundreds of documents. This rule overrides any pattern seen in training examples that used tables.
+
+8. DATE FORMAT: MM/DD/YYYY always.
+
+9. FIELDS: Never leave a field blank. If something wasn't discussed, write "Not discussed."
+
+11. SECTION 2 FORMAT — ABSOLUTE RULE: Section 2 "Investor Profile & Preferences" must ALWAYS use exactly these six bullet fields and nothing else:
+- **Asset Class Focus:**
+- **Geographic Focus:**
+- **Investment Strategy:**
+- **Target Returns:**
+- **Deal Size / Check Size:**
+- **Hold Period:**
+NO tables. NO sub-headers. NO extra fields. NO variations. The same six bullet fields every single meeting, no exceptions. If a meeting has multiple investment vehicles (e.g. a REIT and an opportunistic fund), describe them within the text of each field — do NOT create separate rows or columns.
+
+12. TRAINING REFERENCE — you have been trained on these meeting types and must produce output consistent with them:
+   - Forum Investment Group (11/13/2025): Developer/Fund Manager, multifamily acquisitions + development, Southeast/Sunbelt/Mountain West
+   - Midwood Investments (12/16/2025): Owner-Operator/Developer, NYC multifamily + retail + development, multi-market
+   - Tishman Speyer (03/13/2026): Institutional Asset Manager, multifamily acquisitions, Nashville/Denver/Atlanta
+   - Pendulum Property Partners (06/26/2025): Value-Add/Opportunistic Office Investor, West Coast office + covered land plays
+   - Flagstar (05/20/2025): Bank / Lender (Special Assets Group), rent-stabilized multifamily workouts + dispositions, New York
+   These are your style and format bible. Every output must match the register, depth, and structure of these examples.
+
+10. COMPANY TYPE: Must be accurate to the firm's actual business model.`;
+}
+
+// ── STATE ──
+let files = { transcript: '', summary: '' };
+let lastMd = '';
+let zapierQueue = JSON.parse(localStorage.getItem('ay_zapier_queue') || '[]');
+
+// ── TABS ──
+function switchTab(tab) {
+  document.getElementById('panelManual').style.display = tab === 'manual' ? 'block' : 'none';
+  document.getElementById('panelZapier').style.display = tab === 'zapier' ? 'block' : 'none';
+  document.getElementById('tabManual').className = 'tab' + (tab === 'manual' ? ' active' : '');
+  document.getElementById('tabZapier').className = 'tab' + (tab === 'zapier' ? ' active' : '');
+  if (tab === 'zapier') renderQueue();
+}
+
+// ── DRAG & DROP ──
+function dzDragOver(e, id) {
+  e.preventDefault();
+  document.getElementById(id).classList.add('dragover');
+}
+function dzDragLeave(id) {
+  document.getElementById(id).classList.remove('dragover');
+}
+function dzDrop(e, type) {
+  e.preventDefault();
+  const id = type === 'transcript' ? 'dzTranscript' : 'dzSummary';
+  document.getElementById(id).classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file, type);
+}
+function fileChosen(e, type) {
+  const file = e.target.files[0];
+  if (file) loadFile(file, type);
+}
+function loadFile(file, type) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    files[type] = text;
+    const dzId = type === 'transcript' ? 'dzTranscript' : 'dzSummary';
+    const loadedId = type === 'transcript' ? 'dzTranscriptLoaded' : 'dzSummaryLoaded';
+    const filenameId = type === 'transcript' ? 'transcriptFilename' : 'summaryFilename';
+    const previewId = type === 'transcript' ? 'transcriptPreview' : 'summaryPreview';
+    document.getElementById(dzId).classList.add('loaded');
+    document.getElementById(filenameId).textContent = file.name;
+    document.getElementById(previewId).textContent = text.slice(0, 600) + (text.length > 600 ? '\n...' : '');
+    checkReady();
+  };
+  reader.readAsText(file);
+}
+function clearFile(e, type) {
+  if(e && e.stopPropagation) e.stopPropagation();
+  files[type] = '';
+  const panelId = type === 'transcript' ? 'dzTranscript' : 'dzSummary';
+  const inputId = type === 'transcript' ? 'fileTranscript' : 'fileSummary';
+  document.getElementById(panelId).classList.remove('loaded');
+  document.getElementById(inputId).value = '';
+  checkReady();
+}
+function checkReady() {
+  const ready = files.transcript && files.summary;
+  document.getElementById('runBtn').disabled = !ready;
+  document.getElementById('readyHint').textContent = ready
+    ? 'both files loaded — ready to reformat'
+    : files.transcript ? 'drop summary file to continue'
+    : files.summary ? 'drop transcript file to continue'
+    : 'drop both files to begin';
+  document.getElementById('readyHint').style.color = ready ? 'var(--accent-dim)' : 'var(--text-dim)';
+}
+function clearAll() {
+  clearFile({ stopPropagation: () => {} }, 'transcript');
+  clearFile({ stopPropagation: () => {} }, 'summary');
+  resetOutput();
+}
+
+// ── ZAPIER PANEL ──
+function toggleZapier() { switchTab('zapier'); }
+function copyWebhook() {
+  navigator.clipboard.writeText(document.getElementById('webhookUrl').textContent);
+  const btn = event.target;
+  btn.textContent = 'Copied ✓';
+  setTimeout(() => btn.textContent = 'Copy URL', 2000);
+}
+
+// Poll for webhook data stored in localStorage (set by Zapier catchall)
+function renderQueue() {
+  const queue = JSON.parse(localStorage.getItem('ay_zapier_queue') || '[]');
+  const el = document.getElementById('incomingQueue');
+  const empty = document.getElementById('queueEmpty');
+  if (!queue.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  // Remove old items and re-render
+  el.querySelectorAll('.queue-item').forEach(n => n.remove());
+  queue.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'queue-item';
+    div.innerHTML = `
+      <div class="queue-meta">
+        <div class="queue-name">${escHtml(item.subject || 'Meeting ' + (i+1))}</div>
+        <div class="queue-time">${item.time || ''}</div>
+      </div>
+      <button class="queue-use-btn" onclick="loadFromQueue(${i})">Load & Reformat →</button>`;
+    el.appendChild(div);
+  });
+}
+
+function loadFromQueue(i) {
+  const queue = JSON.parse(localStorage.getItem('ay_zapier_queue') || '[]');
+  const item = queue[i];
+  if (!item) return;
+  files.transcript = item.transcript || '';
+  files.summary = item.summary || '';
+  // Switch to manual tab and show loaded state
+  switchTab('manual');
+  if (files.transcript) {
+    document.getElementById('dzTranscript').classList.add('loaded');
+    document.getElementById('transcriptFilename').textContent = item.subject + ' — transcript.txt';
+    document.getElementById('transcriptPreview').textContent = files.transcript.slice(0, 600) + (files.transcript.length > 600 ? '\n...' : '');
+  }
+  if (files.summary) {
+    document.getElementById('dzSummary').classList.add('loaded');
+    document.getElementById('summaryFilename').textContent = item.subject + ' — summary.txt';
+    document.getElementById('summaryPreview').textContent = files.summary.slice(0, 600) + (files.summary.length > 600 ? '\n...' : '');
+  }
+  checkReady();
+  // Auto-run
+  setTimeout(() => runReformat(), 300);
+}
+
+// Expose a global function Zapier's webhook can call via a small JS snippet
+window.receiveZapierPayload = function(payload) {
+  const queue = JSON.parse(localStorage.getItem('ay_zapier_queue') || '[]');
+  queue.unshift({
+    subject: payload.subject || 'Plaud Meeting',
+    transcript: payload.transcript || '',
+    summary: payload.summary || '',
+    time: new Date().toLocaleString()
+  });
+  localStorage.setItem('ay_zapier_queue', JSON.stringify(queue.slice(0, 20)));
+  renderQueue();
+};
+
+// ── REFORMAT ──
+async function runReformat() {
+  if (!files.transcript || !files.summary) return;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'Reformatting...';
+  document.getElementById('statusDot').className = 'status-dot active';
+
+  document.getElementById('outputBody').innerHTML = `
+    <div style="grid-column:1/-1;padding:18px 16px;">
+      <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Generating...</div>
+      <pre id="streamPre" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:break-word;"></pre>
+    </div>`;
+
+  const systemPrompt = buildSystemPrompt();
+
+
+  const userPrompt = `Convert these two inputs into the AY reformatted .md file.
+
+RAW PLAUD TRANSCRIPT:
+<transcript>
+${files.transcript}
+</transcript>
+
+PLAUD-GENERATED SUMMARY:
+<summary>
+${files.summary}
+</summary>
+
+Output ONLY the markdown. Begin immediately with # [Company Name] - Meeting Summary.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error ${response.status}`);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    const pre = document.getElementById('streamPre');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+            fullText += parsed.delta.text;
+            pre.textContent = fullText;
+            pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+          }
+        } catch {}
+      }
+    }
+
+    lastMd = fullText;
+
+    document.getElementById('outputBody').innerHTML = `
+      <div style="display:flex;flex-direction:column;border-right:1px solid var(--border);">
+        <div class="pane-label">Raw Markdown</div>
+        <div style="padding:14px 16px;overflow-y:auto;max-height:520px;flex:1;">
+          <pre style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;word-break:break-word;">${escHtml(lastMd)}</pre>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;">
+        <div class="pane-label">Rendered Preview</div>
+        <div style="padding:16px 20px;overflow-y:auto;max-height:520px;flex:1;" class="md-render">
+          ${renderMd(lastMd)}
+        </div>
+      </div>`;
+
+    document.getElementById('copyBtn').style.display = 'inline-block';
+    document.getElementById('dlBtn').style.display = 'inline-block';
+    document.getElementById('statusDot').className = 'status-dot active';
+
+  } catch (err) {
+    document.getElementById('outputBody').innerHTML = `
+      <div style="grid-column:1/-1;padding:16px;">
+        <div class="error-msg">⚠ ${escHtml(err.message)}</div>
+      </div>`;
+    document.getElementById('statusDot').className = 'status-dot';
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.querySelector('.btn-text').textContent = 'Reformat Meeting →';
+}
+
+// ── HELPERS ──
+function resetOutput() {
+  lastMd = '';
+  document.getElementById('outputBody').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">◈</div>
+      <div class="empty-text">Output will appear here</div>
+    </div>`;
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('dlBtn').style.display = 'none';
+  document.getElementById('statusDot').className = 'status-dot';
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function renderMd(md) {
+  let h = escHtml(md);
+  h = h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  h = h.replace(/^- (.+)$/gm,'<li>$1</li>');
+  h = h.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+  h = h.replace(/^---$/gm,'<hr>');
+  h = h.replace(/^(?!<[hul\/])(.+)$/gm,(m,p1) => p1.trim() ? `<p>${p1}</p>` : '');
+  return h;
+}
+function copyMd() {
+  if (!lastMd) return;
+  navigator.clipboard.writeText(lastMd).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy MD'; btn.classList.remove('copied'); }, 2200);
+  });
+}
+function downloadMd() {
+  if (!lastMd) return;
+
+  // Extract company name from: # Company Name - Meeting Summary
+  const nameMatch = lastMd.split('\n')[0].match(/^# (.+?) - /);
+  const company = nameMatch
+    ? nameMatch[1].replace(/[^a-zA-Z0-9 &]/g,'').trim().replace(/ +/g,'_')
+    : 'Meeting_Summary';
+
+  // Extract date from: **Date:** MM/DD/YYYY
+  let dateStr = '';
+  const dateMatch = lastMd.match(/\*\*Date:\*\*\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dateMatch) {
+    const [, mm, dd, yyyy] = dateMatch;
+    dateStr = `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  } else {
+    // fallback: today
+    const now = new Date();
+    dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  }
+
+  const filename = `${dateStr}_${company}_.md`;
+  const blob = new Blo
